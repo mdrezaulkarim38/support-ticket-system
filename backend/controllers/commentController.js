@@ -1,8 +1,14 @@
 import Comment from "../models/Comment.js";
 import Ticket from "../models/Ticket.js";
 
-const canAccess = (ticket, user) =>
-  user.role === "agent" || ticket.createdBy.equals(user._id);
+const canAccess = (ticket, user) => {
+  if (user.role === "admin") return true;
+  if (user.role === "agent") {
+    if (!ticket.assignedTo) return false;
+    return String(ticket.assignedTo) === String(user._id);
+  }
+  return ticket.createdBy.equals(user._id);
+};
 
 export const addComment = async (req, res) => {
   try {
