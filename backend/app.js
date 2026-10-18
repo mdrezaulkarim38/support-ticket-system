@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import setupSwagger from "./config/swagger.js";
 import { apiLimiter, authLimiter } from "./middleware/rateLimiters.js";
 import authRoutes from "./routes/authRoutes.js";
 import ticketRoutes from "./routes/ticketRoutes.js";
@@ -24,6 +25,8 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/tickets/:id/comments", commentRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/users", userRoutes);
+
+setupSwagger(app);
 
 app.use("/api", (req, res) => {
   res.status(404).json({ message: "Route not found" });
