@@ -73,6 +73,18 @@ export const commentRules = [
   handleValidation,
 ];
 
+export const improveTicketRules = [
+  body().custom((_value, { req }) => {
+    const title = (req.body.title || "").trim();
+    const description = (req.body.description || "").trim();
+    if (!title && !description) {
+      throw new Error("Please write a title or description first");
+    }
+    return true;
+  }),
+  handleValidation,
+];
+
 export const statusRules = [
   body("status")
     .isIn(["Open", "In Progress", "Resolved", "Closed"])

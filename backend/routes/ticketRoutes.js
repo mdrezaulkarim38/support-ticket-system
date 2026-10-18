@@ -9,12 +9,24 @@ import {
   assignTicket,
   getActivity,
   getStats,
+  improveTicketDraft,
 } from "../controllers/ticketController.js";
-import { createTicketRules, statusRules } from "../middleware/validators.js";
+import {
+  createTicketRules,
+  statusRules,
+  improveTicketRules,
+} from "../middleware/validators.js";
 
 const router = express.Router();
 
 router.use(protect);
+
+router.post(
+  "/improve",
+  requireRole("customer"),
+  improveTicketRules,
+  improveTicketDraft
+);
 
 router
   .route("/")

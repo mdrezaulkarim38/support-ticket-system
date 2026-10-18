@@ -325,6 +325,45 @@ const spec = {
         },
       },
     },
+    "/api/tickets/improve": {
+      post: {
+        tags: ["Tickets"],
+        summary: "Rewrite a ticket draft (customer only, AI polish)",
+        description:
+          "Fixes spelling and grammar and makes the ticket clearer. Returns suggested title and description without saving anything.",
+        requestBody: jsonBody(
+          {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+            },
+          },
+          {
+            title: "loggin problem",
+            description: "cant login to my account plz help",
+          }
+        ),
+        responses: {
+          200: {
+            description: "Improved draft",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          400: errorResponse,
+          403: errorResponse,
+        },
+      },
+    },
     "/api/tickets/stats": {
       get: {
         tags: ["Tickets"],

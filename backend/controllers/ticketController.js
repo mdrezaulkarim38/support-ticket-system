@@ -1,7 +1,7 @@
 import Ticket from "../models/Ticket.js";
 import Activity from "../models/Activity.js";
 import User from "../models/User.js";
-import { analyzeTicket } from "../utils/aiService.js";
+import { analyzeTicket, improveTicket } from "../utils/aiService.js";
 import { logActivity } from "../utils/activity.js";
 
 const STATUSES = ["Open", "In Progress", "Resolved", "Closed"];
@@ -60,6 +60,16 @@ const canAccess = (ticket, user) => {
     return String(assignedId) === String(user._id);
   }
   return ticket.createdBy.equals(user._id);
+};
+
+export const improveTicketDraft = async (req, res) => {
+  try {
+    const { title = "", description = "" } = req.body;
+    const improved = await improveTicket(title, description);
+    res.json(improved);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 export const createTicket = async (req, res) => {

@@ -212,6 +212,31 @@ test("customers only see their own tickets", async () => {
   assert.equal(res.body.total, 0);
 });
 
+test("AI improve rewrites a draft and rejects empty input", async () => {
+  const { customerToken, agentToken } = await setupUsers();
+
+  const res = await request(app)
+    .post("/api/tickets/improve")
+    .set("Authorization", `Bearer ${customerToken}`)
+    .send({ title: "loggin problem", description: "cant login plz help" });
+  assert.equal(res.status, 200);
+  assert.equal(typeof res.body.title, "string");
+  assert.ok(res.body.title.length > 0);
+  assert.ok(res.body.description.length > 0);
+
+  const empty = await request(app)
+    .post("/api/tickets/improve")
+    .set("Authorization", `Bearer ${customerToken}`)
+    .send({ title: "   ", description: "   " });
+  assert.equal(empty.status, 400);
+
+  const forbidden = await request(app)
+    .post("/api/tickets/improve")
+    .set("Authorization", `Bearer ${agentToken}`)
+    .send({ title: "x", description: "y" });
+  assert.equal(forbidden.status, 403);
+});
+
 test("stats endpoint returns aggregates", async () => {
   const { customerToken, adminToken } = await setupUsers();
   await createTicket(customerToken, { title: "one", description: "d" });
