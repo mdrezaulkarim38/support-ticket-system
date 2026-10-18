@@ -2,13 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
+  Activity as ActivityIcon,
   ArrowLeft,
   CalendarDays,
   MessageSquare,
+  PlusCircle,
   Send,
   Sparkles,
   Tag,
   User as UserIcon,
+  UserPlus,
+  UserX,
 } from "lucide-react";
 import Avatar from "../components/Avatar";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -33,12 +37,40 @@ const formatDate = (value) =>
       })
     : "-";
 
+const describeActivity = (item) => {
+  const actor = item.actor?.name || "Someone";
+  switch (item.action) {
+    case "created":
+      return `${actor} created this ticket`;
+    case "assigned":
+      return `${actor} assigned this ticket to ${item.meta?.to || "an agent"}`;
+    case "reassigned":
+      return `${actor} reassigned this ticket to ${item.meta?.to || "an agent"}`;
+    case "unassigned":
+      return `${actor} unassigned this ticket`;
+    case "status_changed":
+      return `${actor} changed status from ${item.meta?.from} to ${item.meta?.to}`;
+    default:
+      return `${actor} updated this ticket`;
+  }
+};
+
+const ACTIVITY_ICONS = {
+  created: PlusCircle,
+  assigned: UserPlus,
+  reassigned: UserPlus,
+  unassigned: UserX,
+  status_changed: MessageSquare,
+};
+
 export default function TicketDetails() {
   const { id } = useParams();
   const { user } = useAuth();
 
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -48,26 +80,44 @@ export default function TicketDetails() {
   const [status, setStatus] = useState("");
   const [updating, setUpdating] = useState(false);
 
+  const [assignee, setAssignee] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ticketRes, commentsRes] = await Promise.all([
+      const requests = [
         api.get(`/api/tickets/${id}`),
         api.get(`/api/tickets/${id}/comments`),
-      ]);
+        api.get(`/api/tickets/${id}/activity`),
+      ];
+      if (user?.role === "agent") {
+        requests.push(api.get("/api/users/agents"));
+      }
+
+      const [ticketRes, commentsRes, activityRes, agentsRes] =
+        await Promise.all(requests);
+
       setTicket(ticketRes.data);
       setComments(commentsRes.data);
+      setActivity(activityRes.data);
+      if (agentsRes) setAgents(agentsRes.data);
       setError("");
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const refreshActivity = async () => {
+    const { data } = await api.get(`/api/tickets/${id}/activity`);
+    setActivity(data);
+  };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -101,11 +151,35 @@ export default function TicketDetails() {
       const { data } = await api.patch(`/api/tickets/${id}/status`, { status });
       setTicket(data);
       setStatus("");
+      await refreshActivity();
       toast.success(`Status updated to ${data.status}.`);
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleAssign = async (e) => {
+    e.preventDefault();
+
+    setAssigning(true);
+    try {
+      const { data } = await api.patch(`/api/tickets/${id}/assign`, {
+        assignedTo: assignee || null,
+      });
+      setTicket(data);
+      setAssignee("");
+      await refreshActivity();
+      toast.success(
+        data.assignedTo
+          ? `Assigned to ${data.assignedTo.name}.`
+          : "Ticket unassigned."
+      );
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -230,6 +304,43 @@ export default function TicketDetails() {
                   </div>
                 </form>
               </section>
+
+              <section className="mt-6">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-800">
+                  <ActivityIcon className="h-5 w-5 text-slate-400" />
+                  Activity
+                </h2>
+
+                <ol className="mt-3 space-y-3">
+                  {activity.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                      No activity recorded yet.
+                    </p>
+                  ) : (
+                    activity.map((item) => {
+                      const Icon = ACTIVITY_ICONS[item.action] || ActivityIcon;
+                      return (
+                        <li
+                          key={item._id}
+                          className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                        >
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-slate-700">
+                              {describeActivity(item)}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {formatDate(item.createdAt)}
+                            </p>
+                          </div>
+                        </li>
+                      );
+                    })
+                  )}
+                </ol>
+              </section>
             </div>
 
             <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
@@ -278,6 +389,18 @@ export default function TicketDetails() {
                       <p className="text-xs text-slate-400">Requested by</p>
                     </div>
                   </div>
+                  <div className="flex items-center gap-3 border-t border-slate-100 pt-3">
+                    <Avatar
+                      name={ticket.assignedTo?.name || "Unassigned"}
+                      size="sm"
+                    />
+                    <div className="leading-tight">
+                      <p className="font-medium text-slate-700">
+                        {ticket.assignedTo?.name || "Unassigned"}
+                      </p>
+                      <p className="text-xs text-slate-400">Assigned to</p>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <CalendarDays className="h-4 w-4 text-slate-400" />
                     Created {formatDate(ticket.createdAt)}
@@ -288,6 +411,52 @@ export default function TicketDetails() {
                   </div>
                 </div>
               </div>
+
+              {isAgent && (
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    Assignment
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {ticket.assignedTo
+                      ? `Currently assigned to ${ticket.assignedTo.name}`
+                      : "This ticket is unassigned."}
+                  </p>
+                  <form onSubmit={handleAssign} className="mt-3 space-y-3">
+                    <select
+                      value={assignee}
+                      onChange={(e) => setAssignee(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option value="">
+                        {ticket.assignedTo ? "Unassign" : "Assign to me"}
+                      </option>
+                      {agents
+                        .filter(
+                          (agent) => agent._id !== ticket.assignedTo?._id
+                        )
+                        .map((agent) => (
+                          <option key={agent._id} value={agent._id}>
+                            {agent.name}
+                            {agent._id === user?.id ? " (me)" : ""}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={assigning}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      {assigning
+                        ? "Saving..."
+                        : assignee
+                          ? "Assign ticket"
+                          : "Unassign ticket"}
+                    </button>
+                  </form>
+                </div>
+              )}
 
               {isAgent && (
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
