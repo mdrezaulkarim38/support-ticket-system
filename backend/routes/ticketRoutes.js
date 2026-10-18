@@ -23,8 +23,13 @@ router
 
 router.get("/stats", getStats);
 router.get("/:id/activity", getActivity);
-router.patch("/:id/status", requireRole("agent"), statusRules, updateStatus);
-router.patch("/:id/assign", requireRole("agent"), assignTicket);
+router.patch(
+  "/:id/status",
+  requireRole("agent", "admin"),
+  statusRules,
+  updateStatus
+);
+router.patch("/:id/assign", requireRole("agent", "admin"), assignTicket);
 router.get("/:id", getTicket);
 
 export default router;

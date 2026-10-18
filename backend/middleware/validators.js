@@ -24,6 +24,19 @@ export const registerRules = [
   handleValidation,
 ];
 
+export const createAgentRules = [
+  body("name").trim().notEmpty().withMessage("Name is required"),
+  body("email")
+    .trim()
+    .isEmail()
+    .withMessage("A valid email is required")
+    .normalizeEmail(),
+  body("password")
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters"),
+  handleValidation,
+];
+
 export const loginRules = [
   body("email")
     .trim()

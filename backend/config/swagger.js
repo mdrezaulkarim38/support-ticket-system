@@ -52,7 +52,7 @@ const spec = {
           _id: { type: "string" },
           name: { type: "string" },
           email: { type: "string" },
-          role: { type: "string", enum: ["customer", "agent"] },
+          role: { type: "string", enum: ["customer", "agent", "admin"] },
         },
       },
       Ticket: {
@@ -524,7 +524,7 @@ const spec = {
     "/api/users/agents": {
       get: {
         tags: ["Users"],
-        summary: "List all agents (agent only)",
+        summary: "List all agents (agent or admin)",
         responses: {
           200: {
             description: "Agents",
@@ -538,6 +538,39 @@ const spec = {
             },
           },
           403: errorResponse,
+        },
+      },
+      post: {
+        tags: ["Users"],
+        summary: "Create an agent account (admin only)",
+        requestBody: jsonBody(
+          {
+            type: "object",
+            required: ["name", "email", "password"],
+            properties: {
+              name: { type: "string" },
+              email: { type: "string", format: "email" },
+              password: { type: "string", minLength: 6 },
+            },
+          },
+          {
+            name: "Jane Agent",
+            email: "jane.agent@example.com",
+            password: "secret123",
+          }
+        ),
+        responses: {
+          201: {
+            description: "Created agent",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/User" },
+              },
+            },
+          },
+          400: errorResponse,
+          403: errorResponse,
+          409: errorResponse,
         },
       },
     },

@@ -24,12 +24,20 @@ const setupUsers = async () => {
     password: "secret123",
     role: "agent",
   });
+  const admin = await createUser({
+    name: "Admin",
+    email: "admin@test.com",
+    password: "secret123",
+    role: "admin",
+  });
 
   return {
     customer,
     agent,
+    admin,
     customerToken: tokenFor(customer),
     agentToken: tokenFor(agent),
+    adminToken: tokenFor(admin),
   };
 };
 
@@ -112,7 +120,7 @@ test("customers cannot assign tickets", async () => {
 });
 
 test("status transitions are validated", async () => {
-  const { customerToken, agentToken } = await setupUsers();
+  const { customerToken, adminToken } = await setupUsers();
   const created = await createTicket(customerToken, {
     title: "t",
     description: "d",
@@ -121,16 +129,48 @@ test("status transitions are validated", async () => {
 
   const invalid = await request(app)
     .patch(`/api/tickets/${id}/status`)
-    .set("Authorization", `Bearer ${agentToken}`)
+    .set("Authorization", `Bearer ${adminToken}`)
     .send({ status: "Resolved" });
   assert.equal(invalid.status, 400);
 
   const valid = await request(app)
     .patch(`/api/tickets/${id}/status`)
-    .set("Authorization", `Bearer ${agentToken}`)
+    .set("Authorization", `Bearer ${adminToken}`)
     .send({ status: "In Progress" });
   assert.equal(valid.status, 200);
   assert.equal(valid.body.status, "In Progress");
+});
+
+test("agents only see and update tickets assigned to them", async () => {
+  const { customerToken, agentToken, agent, adminToken } = await setupUsers();
+
+  const assigned = await createTicket(customerToken, {
+    title: "assigned",
+    description: "d",
+  });
+  await request(app)
+    .patch(`/api/tickets/${assigned.body._id}/assign`)
+    .set("Authorization", `Bearer ${adminToken}`)
+    .send({ assignedTo: agent._id.toString() });
+
+  await createTicket(customerToken, { title: "unassigned", description: "d" });
+
+  const agentList = await request(app)
+    .get("/api/tickets")
+    .set("Authorization", `Bearer ${agentToken}`);
+  assert.equal(agentList.body.total, 1);
+  assert.equal(agentList.body.items[0].title, "assigned");
+
+  const adminList = await request(app)
+    .get("/api/tickets")
+    .set("Authorization", `Bearer ${adminToken}`);
+  assert.equal(adminList.body.total, 2);
+
+  const allowed = await request(app)
+    .patch(`/api/tickets/${assigned.body._id}/status`)
+    .set("Authorization", `Bearer ${agentToken}`)
+    .send({ status: "In Progress" });
+  assert.equal(allowed.status, 200);
 });
 
 test("ticket list supports pagination and search", async () => {
@@ -173,12 +213,12 @@ test("customers only see their own tickets", async () => {
 });
 
 test("stats endpoint returns aggregates", async () => {
-  const { customerToken, agentToken } = await setupUsers();
+  const { customerToken, adminToken } = await setupUsers();
   await createTicket(customerToken, { title: "one", description: "d" });
 
   const res = await request(app)
     .get("/api/tickets/stats")
-    .set("Authorization", `Bearer ${agentToken}`);
+    .set("Authorization", `Bearer ${adminToken}`);
 
   assert.equal(res.status, 200);
   assert.equal(res.body.total, 1);

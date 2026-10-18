@@ -52,8 +52,15 @@ const withRefs = (query) =>
     .populate("createdBy", "name email role")
     .populate("assignedTo", "name email role");
 
-const canAccess = (ticket, user) =>
-  user.role === "agent" || ticket.createdBy.equals(user._id);
+const canAccess = (ticket, user) => {
+  if (user.role === "admin") return true;
+  if (user.role === "agent") {
+    if (!ticket.assignedTo) return false;
+    const assignedId = ticket.assignedTo._id || ticket.assignedTo;
+    return String(assignedId) === String(user._id);
+  }
+  return ticket.createdBy.equals(user._id);
+};
 
 export const createTicket = async (req, res) => {
   try {
@@ -95,7 +102,9 @@ export const getTickets = async (req, res) => {
     );
 
     const filter = {};
-    if (req.user.role !== "agent") {
+    if (req.user.role === "agent") {
+      filter.assignedTo = req.user._id;
+    } else if (req.user.role === "customer") {
       filter.createdBy = req.user._id;
     }
     if (status) {
@@ -166,7 +175,12 @@ export const getTickets = async (req, res) => {
 
 export const getStats = async (req, res) => {
   try {
-    const match = req.user.role === "agent" ? {} : { createdBy: req.user._id };
+    const match =
+      req.user.role === "agent"
+        ? { assignedTo: req.user._id }
+        : req.user.role === "customer"
+          ? { createdBy: req.user._id }
+          : {};
 
     const since = new Date();
     since.setHours(0, 0, 0, 0);
@@ -261,6 +275,15 @@ export const updateStatus = async (req, res) => {
       return res.status(404).json({ message: "Ticket not found" });
     }
 
+    if (
+      req.user.role === "agent" &&
+      String(ticket.assignedTo || "") !== String(req.user._id)
+    ) {
+      return res
+        .status(403)
+        .json({ message: "You can only update tickets assigned to you" });
+    }
+
     if (ticket.status === status) {
       return res.status(400).json({ message: `Ticket is already ${status}` });
     }
@@ -313,6 +336,16 @@ export const assignTicket = async (req, res) => {
       }
     } else {
       value = null;
+    }
+
+    if (
+      req.user.role !== "admin" &&
+      value &&
+      String(value) !== String(req.user._id)
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Agents can only assign tickets to themselves" });
     }
 
     const previous = ticket.assignedTo ? String(ticket.assignedTo) : null;

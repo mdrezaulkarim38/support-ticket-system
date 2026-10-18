@@ -4,6 +4,7 @@ import { connectDB } from "./config/db.js";
 import User from "./models/User.js";
 import Ticket from "./models/Ticket.js";
 import Comment from "./models/Comment.js";
+import Activity from "./models/Activity.js";
 
 const DEMO_PASSWORD = "123456";
 
@@ -41,7 +42,15 @@ const run = async () => {
     User.deleteMany({}),
     Ticket.deleteMany({}),
     Comment.deleteMany({}),
+    Activity.deleteMany({}),
   ]);
+
+  await User.create({
+    name: "Demo Admin",
+    email: "admin@example.com",
+    password: DEMO_PASSWORD,
+    role: "admin",
+  });
 
   const customer = await User.create({
     name: "Demo Customer",
@@ -58,14 +67,14 @@ const run = async () => {
   });
 
   const created = [];
-  for (const t of tickets) {
+  for (const [index, t] of tickets.entries()) {
     created.push(
       await Ticket.create({
         ...t,
         aiSuggestedCategory: t.category,
         aiSuggestedPriority: t.priority,
         createdBy: customer._id,
-        assignedTo: agent._id,
+        assignedTo: index < 2 ? agent._id : undefined,
       })
     );
   }
@@ -85,6 +94,7 @@ const run = async () => {
 
   console.log("Seed complete");
   console.log(`  ${created.length} tickets created`);
+  console.log("  admin@example.com / 123456");
   console.log("  customer@example.com / 123456");
   console.log("  agent@example.com / 123456");
 
