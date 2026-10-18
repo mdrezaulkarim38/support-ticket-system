@@ -8,6 +8,8 @@ with **Google Gemini AI** automatically classifying every ticket by category and
 ## Why it stands out
 
 - **AI that does the triage** — new tickets are instantly categorised and prioritised.
+- **AI writing help** — one tap rewrites a rough ticket into clear, professional text
+  (limited to 3 uses per ticket).
 - **Three-role workflows** — customers, agents and admins each get a tailored experience.
 - **Admin controls the desk** — admins create agents and assign tickets to them.
 - **Agent assignment & activity log** — tickets can be claimed, reassigned, and every
