@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Alert from "../components/Alert";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Navbar from "../components/Navbar";
 import api, { getErrorMessage } from "../services/api";
@@ -9,7 +9,6 @@ export default function CreateTicket() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ title: "", description: "" });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
@@ -17,10 +16,9 @@ export default function CreateTicket() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!form.title.trim() || !form.description.trim()) {
-      setError("Title and description are required.");
+      toast.error("Title and description are required.");
       return;
     }
 
@@ -30,9 +28,10 @@ export default function CreateTicket() {
         title: form.title.trim(),
         description: form.description.trim(),
       });
-      navigate(`/tickets/${data._id}`, { state: { created: true } });
+      toast.success("Ticket created successfully.");
+      navigate(`/tickets/${data._id}`);
     } catch (err) {
-      setError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
       setLoading(false);
     }
   };
@@ -46,8 +45,6 @@ export default function CreateTicket() {
         <p className="mt-1 text-sm text-slate-500">
           Describe your issue and our AI will suggest a category and priority.
         </p>
-
-        <Alert className="mt-4">{error}</Alert>
 
         <form
           onSubmit={handleSubmit}

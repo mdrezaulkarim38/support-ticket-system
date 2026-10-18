@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
-import Alert from "../components/Alert";
+import { Link, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Navbar from "../components/Navbar";
 import PriorityBadge from "../components/PriorityBadge";
@@ -21,23 +21,17 @@ const formatDate = (value) =>
 export default function TicketDetails() {
   const { id } = useParams();
   const { user } = useAuth();
-  const location = useLocation();
 
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState(
-    location.state?.created ? "Ticket created successfully." : ""
-  );
 
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [commentError, setCommentError] = useState("");
 
   const [status, setStatus] = useState("");
   const [updating, setUpdating] = useState(false);
-  const [statusError, setStatusError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,25 +56,22 @@ export default function TicketDetails() {
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    setCommentError("");
 
     if (!message.trim()) {
-      setCommentError("Please write a message.");
+      toast.error("Please write a message.");
       return;
     }
 
     setSending(true);
-    setCommentError("");
-    setNotice("");
     try {
       const { data } = await api.post(`/api/tickets/${id}/comments`, {
         message: message.trim(),
       });
       setComments((prev) => [...prev, data]);
       setMessage("");
-      setNotice("Comment added.");
+      toast.success("Comment added.");
     } catch (err) {
-      setCommentError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
     } finally {
       setSending(false);
     }
@@ -91,15 +82,13 @@ export default function TicketDetails() {
     if (!status) return;
 
     setUpdating(true);
-    setStatusError("");
-    setNotice("");
     try {
       const { data } = await api.patch(`/api/tickets/${id}/status`, { status });
       setTicket(data);
       setStatus("");
-      setNotice(`Status updated to ${data.status}.`);
+      toast.success(`Status updated to ${data.status}.`);
     } catch (err) {
-      setStatusError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
     } finally {
       setUpdating(false);
     }
@@ -120,16 +109,14 @@ export default function TicketDetails() {
           &larr; Back to tickets
         </Link>
 
-        <Alert variant="success" className="mt-4">
-          {notice}
-        </Alert>
-
         {loading ? (
           <div className="flex justify-center py-16">
             <LoadingSpinner />
           </div>
         ) : error ? (
-          <Alert className="mt-4">{error}</Alert>
+          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500">
+            {error}
+          </div>
         ) : (
           <>
             <div className="mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -178,10 +165,6 @@ export default function TicketDetails() {
                   <p className="text-sm font-medium text-slate-700">
                     Change status
                   </p>
-
-                  {statusError && (
-                    <Alert className="mt-2">{statusError}</Alert>
-                  )}
 
                   {nextStatuses.length === 0 ? (
                     <p className="mt-2 text-sm text-slate-500">
@@ -254,9 +237,6 @@ export default function TicketDetails() {
                 onSubmit={handleAddComment}
                 className="mt-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
               >
-                {commentError && (
-                  <Alert className="mb-2">{commentError}</Alert>
-                )}
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}

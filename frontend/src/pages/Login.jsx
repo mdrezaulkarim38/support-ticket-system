@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Alert from "../components/Alert";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import { getErrorMessage } from "../services/api";
@@ -10,7 +10,6 @@ export default function Login() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
@@ -18,10 +17,9 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!form.email || !form.password) {
-      setError("Please fill in all fields.");
+      toast.error("Please fill in all fields.");
       return;
     }
 
@@ -30,7 +28,7 @@ export default function Login() {
       await login(form.email, form.password);
       navigate("/dashboard");
     } catch (err) {
-      setError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -43,8 +41,6 @@ export default function Login() {
         <p className="mt-1 text-sm text-slate-500">
           Welcome back to the support desk.
         </p>
-
-        <Alert className="mt-4">{error}</Alert>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>

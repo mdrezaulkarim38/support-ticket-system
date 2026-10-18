@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Alert from "../components/Alert";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Navbar from "../components/Navbar";
 import TicketCard from "../components/TicketCard";
@@ -14,17 +14,15 @@ export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [filter, setFilter] = useState("All");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const fetchTickets = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const params = filter === "All" ? {} : { status: filter };
       const { data } = await api.get("/api/tickets", { params });
       setTickets(data);
     } catch (err) {
-      setError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -80,8 +78,6 @@ export default function Dashboard() {
             <div className="flex justify-center py-16">
               <LoadingSpinner />
             </div>
-          ) : error ? (
-            <Alert>{error}</Alert>
           ) : tickets.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center text-slate-500">
               No tickets found.

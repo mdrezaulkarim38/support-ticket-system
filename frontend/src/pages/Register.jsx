@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Alert from "../components/Alert";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import { getErrorMessage } from "../services/api";
@@ -15,7 +15,6 @@ export default function Register() {
     password: "",
     confirm: "",
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
@@ -23,18 +22,17 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!form.name || !form.email || !form.password) {
-      setError("Please fill in all fields.");
+      toast.error("Please fill in all fields.");
       return;
     }
     if (form.password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      toast.error("Password must be at least 6 characters.");
       return;
     }
     if (form.password !== form.confirm) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
 
@@ -43,7 +41,7 @@ export default function Register() {
       await register(form.name, form.email, form.password);
       navigate("/dashboard");
     } catch (err) {
-      setError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -56,8 +54,6 @@ export default function Register() {
         <p className="mt-1 text-sm text-slate-500">
           Register as a customer to open support tickets.
         </p>
-
-        <Alert className="mt-4">{error}</Alert>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
