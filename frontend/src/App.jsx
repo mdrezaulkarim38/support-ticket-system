@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
+import AdminAgents from "./pages/AdminAgents";
 import Analytics from "./pages/Analytics";
 import CreateTicket from "./pages/CreateTicket";
 import Dashboard from "./pages/Dashboard";
@@ -34,8 +35,12 @@ export default function App() {
           <Route path="/tickets/new" element={<CreateTicket />} />
         </Route>
 
-        <Route element={<ProtectedRoute roles={["agent"]} />}>
+        <Route element={<ProtectedRoute roles={["agent", "admin"]} />}>
           <Route path="/analytics" element={<Analytics />} />
+        </Route>
+
+        <Route element={<ProtectedRoute roles={["admin"]} />}>
+          <Route path="/admin/agents" element={<AdminAgents />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

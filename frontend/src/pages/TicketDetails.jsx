@@ -91,7 +91,7 @@ export default function TicketDetails() {
         api.get(`/api/tickets/${id}/comments`),
         api.get(`/api/tickets/${id}/activity`),
       ];
-      if (user?.role === "agent") {
+      if (user?.role === "agent" || user?.role === "admin") {
         requests.push(api.get("/api/users/agents"));
       }
 
@@ -165,9 +165,9 @@ export default function TicketDetails() {
 
     setAssigning(true);
     try {
-      const { data } = await api.patch(`/api/tickets/${id}/assign`, {
-        assignedTo: assignee || null,
-      });
+      const payload =
+        user?.role === "admin" ? { assignedTo: assignee || null } : {};
+      const { data } = await api.patch(`/api/tickets/${id}/assign`, payload);
       setTicket(data);
       setAssignee("");
       await refreshActivity();
@@ -183,7 +183,12 @@ export default function TicketDetails() {
     }
   };
 
+  const isAdmin = user?.role === "admin";
   const isAgent = user?.role === "agent";
+  const isAssignedAgent =
+    isAgent && ticket && String(ticket.assignedTo?._id) === String(user?.id);
+  const canManage = isAdmin || isAssignedAgent;
+  const canClaim = isAgent && ticket && !ticket.assignedTo;
   const nextStatuses = ticket ? TRANSITIONS[ticket.status] || [] : [];
 
   return (
@@ -412,7 +417,7 @@ export default function TicketDetails() {
                 </div>
               </div>
 
-              {isAgent && (
+              {(isAdmin || canClaim) && (
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="text-sm font-semibold text-slate-800">
                     Assignment
@@ -423,25 +428,27 @@ export default function TicketDetails() {
                       : "This ticket is unassigned."}
                   </p>
                   <form onSubmit={handleAssign} className="mt-3 space-y-3">
-                    <select
-                      value={assignee}
-                      onChange={(e) => setAssignee(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                    >
-                      <option value="">
-                        {ticket.assignedTo ? "Unassign" : "Assign to me"}
-                      </option>
-                      {agents
-                        .filter(
-                          (agent) => agent._id !== ticket.assignedTo?._id
-                        )
-                        .map((agent) => (
-                          <option key={agent._id} value={agent._id}>
-                            {agent.name}
-                            {agent._id === user?.id ? " (me)" : ""}
-                          </option>
-                        ))}
-                    </select>
+                    {isAdmin && (
+                      <select
+                        value={assignee}
+                        onChange={(e) => setAssignee(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option value="">
+                          {ticket.assignedTo ? "Unassign" : "Select an agent"}
+                        </option>
+                        {agents
+                          .filter(
+                            (agent) => agent._id !== ticket.assignedTo?._id
+                          )
+                          .map((agent) => (
+                            <option key={agent._id} value={agent._id}>
+                              {agent.name}
+                              {agent._id === user?.id ? " (me)" : ""}
+                            </option>
+                          ))}
+                      </select>
+                    )}
                     <button
                       type="submit"
                       disabled={assigning}
@@ -450,15 +457,17 @@ export default function TicketDetails() {
                       <UserPlus className="h-4 w-4" />
                       {assigning
                         ? "Saving..."
-                        : assignee
-                          ? "Assign ticket"
-                          : "Unassign ticket"}
+                        : isAdmin
+                          ? assignee
+                            ? "Assign ticket"
+                            : "Unassign ticket"
+                          : "Claim ticket"}
                     </button>
                   </form>
                 </div>
               )}
 
-              {isAgent && (
+              {canManage && (
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="text-sm font-semibold text-slate-800">
                     Change status

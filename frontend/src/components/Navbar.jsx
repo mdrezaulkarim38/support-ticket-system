@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { BarChart3, LifeBuoy, LogOut, Ticket } from "lucide-react";
+import { BarChart3, LifeBuoy, LogOut, Ticket, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import Avatar from "./Avatar";
 
@@ -39,10 +39,16 @@ export default function Navbar() {
                 <Ticket className="h-4 w-4" />
                 Tickets
               </NavLink>
-              {user.role === "agent" && (
+              {user.role === "agent" || user.role === "admin" ? (
                 <NavLink to="/analytics" className={navLinkClass}>
                   <BarChart3 className="h-4 w-4" />
                   Analytics
+                </NavLink>
+              ) : null}
+              {user.role === "admin" && (
+                <NavLink to="/admin/agents" className={navLinkClass}>
+                  <Users className="h-4 w-4" />
+                  Agents
                 </NavLink>
               )}
             </nav>

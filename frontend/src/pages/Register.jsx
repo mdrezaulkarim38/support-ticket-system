@@ -84,7 +84,7 @@ export default function Register() {
         </div>
 
         <p className="text-xs text-indigo-200">
-          Full Stack Developer Assessment · NT Tech Innovation
+          AI-powered support, organised end to end.
         </p>
       </aside>
 

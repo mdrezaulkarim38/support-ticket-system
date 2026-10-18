@@ -94,9 +94,11 @@ export default function Dashboard() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-800">Tickets</h1>
             <p className="mt-1 text-sm text-slate-500">
-              {user?.role === "agent"
+              {user?.role === "admin"
                 ? "Every ticket across the desk."
-                : "Your support tickets."}
+                : user?.role === "agent"
+                  ? "Tickets assigned to you."
+                  : "Your support tickets."}
             </p>
           </div>
 

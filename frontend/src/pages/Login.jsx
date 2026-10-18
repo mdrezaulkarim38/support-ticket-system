@@ -64,13 +64,13 @@ export default function Login() {
             </li>
             <li className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 shrink-0" />
-              Secure role-based access for customers and agents
+              Secure role-based access for customers, agents and admins
             </li>
           </ul>
         </div>
 
         <p className="text-xs text-indigo-200">
-          Full Stack Developer Assessment · NT Tech Innovation
+          AI-powered support, organised end to end.
         </p>
       </aside>
 
@@ -160,9 +160,17 @@ export default function Login() {
                 <span>Agent</span>
                 <span className="font-mono">agent@example.com</span>
               </button>
+              <button
+                type="button"
+                onClick={() => quickFill("admin@example.com")}
+                className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-left text-xs text-slate-600 transition hover:bg-slate-100"
+              >
+                <span>Admin</span>
+                <span className="font-mono">admin@example.com</span>
+              </button>
             </div>
             <p className="mt-2 text-[11px] text-slate-400">
-              Password for both: <span className="font-mono">123456</span>
+              Password for all: <span className="font-mono">123456</span>
             </p>
           </div>
         </div>
