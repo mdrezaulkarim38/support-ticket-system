@@ -5,6 +5,7 @@ import { analyzeTicket } from "../utils/aiService.js";
 import { logActivity } from "../utils/activity.js";
 
 const STATUSES = ["Open", "In Progress", "Resolved", "Closed"];
+const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
 
 const ALLOWED_TRANSITIONS = {
   Open: ["In Progress", "Closed"],
@@ -12,6 +13,39 @@ const ALLOWED_TRANSITIONS = {
   Resolved: ["Closed"],
   Closed: [],
 };
+
+const SORTS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  updated: { updatedAt: -1 },
+  priority: { priorityRank: 1, createdAt: -1 },
+  title: { title: 1 },
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const populatedUsers = [
+  {
+    $lookup: {
+      from: "users",
+      localField: "createdBy",
+      foreignField: "_id",
+      as: "createdBy",
+      pipeline: [{ $project: { name: 1, email: 1, role: 1 } }],
+    },
+  },
+  {
+    $lookup: {
+      from: "users",
+      localField: "assignedTo",
+      foreignField: "_id",
+      as: "assignedTo",
+      pipeline: [{ $project: { name: 1, email: 1, role: 1 } }],
+    },
+  },
+  { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
+  { $unwind: { path: "$assignedTo", preserveNullAndEmptyArrays: true } },
+];
 
 const withRefs = (query) =>
   query
@@ -52,21 +86,112 @@ export const createTicket = async (req, res) => {
 
 export const getTickets = async (req, res) => {
   try {
-    const filter = {};
+    const { q, status, priority, category, sort = "newest" } = req.query;
 
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 10, 1),
+      100
+    );
+
+    const filter = {};
     if (req.user.role !== "agent") {
       filter.createdBy = req.user._id;
     }
-
-    if (req.query.status) {
-      if (!STATUSES.includes(req.query.status)) {
+    if (status) {
+      if (!STATUSES.includes(status)) {
         return res.status(400).json({ message: "Invalid status filter" });
       }
-      filter.status = req.query.status;
+      filter.status = status;
+    }
+    if (priority) {
+      if (!PRIORITIES.includes(priority)) {
+        return res.status(400).json({ message: "Invalid priority filter" });
+      }
+      filter.priority = priority;
+    }
+    if (category) {
+      filter.category = category;
+    }
+    if (q && q.trim()) {
+      const regex = new RegExp(escapeRegex(q.trim()), "i");
+      filter.$or = [{ title: regex }, { description: regex }];
     }
 
-    const tickets = await withRefs(Ticket.find(filter)).sort({ createdAt: -1 });
-    res.json(tickets);
+    const sortStage = SORTS[sort] || SORTS.newest;
+
+    const [result] = await Ticket.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          priorityRank: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$priority", "Urgent"] }, then: 0 },
+                { case: { $eq: ["$priority", "High"] }, then: 1 },
+                { case: { $eq: ["$priority", "Medium"] }, then: 2 },
+              ],
+              default: 3,
+            },
+          },
+        },
+      },
+      {
+        $facet: {
+          items: [
+            { $sort: sortStage },
+            { $skip: (page - 1) * limit },
+            { $limit: limit },
+            ...populatedUsers,
+            { $project: { priorityRank: 0 } },
+          ],
+          count: [{ $count: "total" }],
+        },
+      },
+    ]);
+
+    const total = result.count[0]?.total || 0;
+
+    res.json({
+      items: result.items,
+      total,
+      page,
+      limit,
+      pages: Math.max(Math.ceil(total / limit), 1),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getStats = async (req, res) => {
+  try {
+    const match = req.user.role === "agent" ? {} : { createdBy: req.user._id };
+
+    const [statusAgg, priorityAgg] = await Promise.all([
+      Ticket.aggregate([
+        { $match: match },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      Ticket.aggregate([
+        { $match: match },
+        { $group: { _id: "$priority", count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const byStatus = STATUSES.reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+    const byPriority = PRIORITIES.reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+    let total = 0;
+
+    statusAgg.forEach((row) => {
+      byStatus[row._id] = row.count;
+      total += row.count;
+    });
+    priorityAgg.forEach((row) => {
+      byPriority[row._id] = row.count;
+    });
+
+    res.json({ total, byStatus, byPriority });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -8,6 +8,7 @@ import {
   updateStatus,
   assignTicket,
   getActivity,
+  getStats,
 } from "../controllers/ticketController.js";
 import { createTicketRules, statusRules } from "../middleware/validators.js";
 
@@ -20,6 +21,7 @@ router
   .get(getTickets)
   .post(requireRole("customer"), createTicketRules, createTicket);
 
+router.get("/stats", getStats);
 router.get("/:id/activity", getActivity);
 router.patch("/:id/status", requireRole("agent"), statusRules, updateStatus);
 router.patch("/:id/assign", requireRole("agent"), assignTicket);
