@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
+import Alert from "../components/Alert";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Navbar from "../components/Navbar";
 import PriorityBadge from "../components/PriorityBadge";
@@ -20,11 +21,15 @@ const formatDate = (value) =>
 export default function TicketDetails() {
   const { id } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
 
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(
+    location.state?.created ? "Ticket created successfully." : ""
+  );
 
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -65,12 +70,15 @@ export default function TicketDetails() {
     }
 
     setSending(true);
+    setCommentError("");
+    setNotice("");
     try {
       const { data } = await api.post(`/api/tickets/${id}/comments`, {
         message: message.trim(),
       });
       setComments((prev) => [...prev, data]);
       setMessage("");
+      setNotice("Comment added.");
     } catch (err) {
       setCommentError(getErrorMessage(err));
     } finally {
@@ -84,10 +92,12 @@ export default function TicketDetails() {
 
     setUpdating(true);
     setStatusError("");
+    setNotice("");
     try {
       const { data } = await api.patch(`/api/tickets/${id}/status`, { status });
       setTicket(data);
       setStatus("");
+      setNotice(`Status updated to ${data.status}.`);
     } catch (err) {
       setStatusError(getErrorMessage(err));
     } finally {
@@ -110,14 +120,16 @@ export default function TicketDetails() {
           &larr; Back to tickets
         </Link>
 
+        <Alert variant="success" className="mt-4">
+          {notice}
+        </Alert>
+
         {loading ? (
           <div className="flex justify-center py-16">
             <LoadingSpinner />
           </div>
         ) : error ? (
-          <div className="mt-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
+          <Alert className="mt-4">{error}</Alert>
         ) : (
           <>
             <div className="mt-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -168,9 +180,7 @@ export default function TicketDetails() {
                   </p>
 
                   {statusError && (
-                    <div className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                      {statusError}
-                    </div>
+                    <Alert className="mt-2">{statusError}</Alert>
                   )}
 
                   {nextStatuses.length === 0 ? (
@@ -245,9 +255,7 @@ export default function TicketDetails() {
                 className="mt-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
               >
                 {commentError && (
-                  <div className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {commentError}
-                  </div>
+                  <Alert className="mb-2">{commentError}</Alert>
                 )}
                 <textarea
                   value={message}

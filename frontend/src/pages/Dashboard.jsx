@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import Alert from "../components/Alert";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Navbar from "../components/Navbar";
 import TicketCard from "../components/TicketCard";
@@ -80,9 +81,7 @@ export default function Dashboard() {
               <LoadingSpinner />
             </div>
           ) : error ? (
-            <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
+            <Alert>{error}</Alert>
           ) : tickets.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center text-slate-500">
               No tickets found.

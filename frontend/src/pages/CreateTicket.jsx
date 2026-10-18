@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Alert from "../components/Alert";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Navbar from "../components/Navbar";
 import api, { getErrorMessage } from "../services/api";
@@ -29,7 +30,7 @@ export default function CreateTicket() {
         title: form.title.trim(),
         description: form.description.trim(),
       });
-      navigate(`/tickets/${data._id}`);
+      navigate(`/tickets/${data._id}`, { state: { created: true } });
     } catch (err) {
       setError(getErrorMessage(err));
       setLoading(false);
@@ -46,11 +47,7 @@ export default function CreateTicket() {
           Describe your issue and our AI will suggest a category and priority.
         </p>
 
-        {error && (
-          <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        <Alert className="mt-4">{error}</Alert>
 
         <form
           onSubmit={handleSubmit}

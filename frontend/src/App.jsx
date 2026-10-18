@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import CreateTicket from "./pages/CreateTicket";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import NotFound from "./pages/NotFound";
 import Register from "./pages/Register";
 import TicketDetails from "./pages/TicketDetails";
 
@@ -11,6 +12,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -23,7 +25,7 @@ export default function App() {
           <Route path="/tickets/new" element={<CreateTicket />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>
   );

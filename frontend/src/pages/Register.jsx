@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Alert from "../components/Alert";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import { getErrorMessage } from "../services/api";
@@ -56,11 +57,7 @@ export default function Register() {
           Register as a customer to open support tickets.
         </p>
 
-        {error && (
-          <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        <Alert className="mt-4">{error}</Alert>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
