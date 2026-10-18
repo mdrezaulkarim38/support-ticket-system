@@ -1,25 +1,6 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+import "dotenv/config";
 import { connectDB } from "./config/db.js";
-import authRoutes from "./routes/authRoutes.js";
-import ticketRoutes from "./routes/ticketRoutes.js";
-import commentRoutes from "./routes/commentRoutes.js";
-
-dotenv.config();
-
-const app = express();
-
-app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173" }));
-app.use(express.json());
-
-app.get("/api/health", (req, res) => {
-  res.status(200).json({ message: "Server is running" });
-});
-
-app.use("/api/auth", authRoutes);
-app.use("/api/tickets/:id/comments", commentRoutes);
-app.use("/api/tickets", ticketRoutes);
+import app from "./app.js";
 
 const PORT = process.env.PORT || 5000;
 

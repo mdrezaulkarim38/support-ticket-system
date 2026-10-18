@@ -7,6 +7,10 @@ import {
   getTicket,
   updateStatus,
 } from "../controllers/ticketController.js";
+import {
+  createTicketRules,
+  statusRules,
+} from "../middleware/validators.js";
 
 const router = express.Router();
 
@@ -15,9 +19,9 @@ router.use(protect);
 router
   .route("/")
   .get(getTickets)
-  .post(requireRole("customer"), createTicket);
+  .post(requireRole("customer"), createTicketRules, createTicket);
 
 router.get("/:id", getTicket);
-router.patch("/:id/status", requireRole("agent"), updateStatus);
+router.patch("/:id/status", requireRole("agent"), statusRules, updateStatus);
 
 export default router;
