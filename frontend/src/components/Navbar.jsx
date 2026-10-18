@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
+import { LifeBuoy, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import Avatar from "./Avatar";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -11,28 +13,36 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <Link to="/dashboard" className="text-lg font-semibold text-slate-800">
-          Support Tickets
+    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+        <Link
+          to="/dashboard"
+          className="flex items-center gap-2 text-base font-semibold text-slate-800"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+            <LifeBuoy className="h-5 w-5" />
+          </span>
+          HelpDesk
         </Link>
 
-        <div className="flex items-center gap-3 text-sm">
-          {user && (
-            <span className="hidden text-slate-500 sm:inline">
-              {user.name}
-              <span className="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {user.role}
-              </span>
-            </span>
-          )}
-          <button
-            onClick={handleLogout}
-            className="rounded-md bg-slate-800 px-3 py-1.5 font-medium text-white transition hover:bg-slate-700"
-          >
-            Logout
-          </button>
-        </div>
+        {user && (
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 sm:flex">
+              <Avatar name={user.name} size="sm" />
+              <div className="leading-tight">
+                <p className="text-sm font-medium text-slate-800">{user.name}</p>
+                <p className="text-xs capitalize text-slate-500">{user.role}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
