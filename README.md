@@ -3,8 +3,6 @@
 A full-stack help desk where customers raise support tickets and agents resolve them —
 with **Google Gemini AI** automatically classifying every ticket by category and priority.
 
-Built as a Full Stack Developer assessment for **NT Tech Innovation**.
-
 ---
 
 ## Why it stands out
