@@ -6,6 +6,7 @@ import { apiLimiter, authLimiter } from "./middleware/rateLimiters.js";
 import authRoutes from "./routes/authRoutes.js";
 import ticketRoutes from "./routes/ticketRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api", apiLimiter);
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/tickets/:id/comments", commentRoutes);
 app.use("/api/tickets", ticketRoutes);
+app.use("/api/users", userRoutes);
 
 app.use("/api", (req, res) => {
   res.status(404).json({ message: "Route not found" });

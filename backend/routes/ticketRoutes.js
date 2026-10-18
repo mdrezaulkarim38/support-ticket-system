@@ -6,11 +6,10 @@ import {
   getTickets,
   getTicket,
   updateStatus,
+  assignTicket,
+  getActivity,
 } from "../controllers/ticketController.js";
-import {
-  createTicketRules,
-  statusRules,
-} from "../middleware/validators.js";
+import { createTicketRules, statusRules } from "../middleware/validators.js";
 
 const router = express.Router();
 
@@ -21,7 +20,9 @@ router
   .get(getTickets)
   .post(requireRole("customer"), createTicketRules, createTicket);
 
-router.get("/:id", getTicket);
+router.get("/:id/activity", getActivity);
 router.patch("/:id/status", requireRole("agent"), statusRules, updateStatus);
+router.patch("/:id/assign", requireRole("agent"), assignTicket);
+router.get("/:id", getTicket);
 
 export default router;
