@@ -16,7 +16,17 @@ Built as a Full Stack Developer assessment for NT Tech Innovation.
 - **AI classification** - Gemini suggests a category and priority for each new ticket.
 - **Comments** - threaded conversation on each ticket between the customer and agents.
 - **Status workflow** - validated transitions: `Open -> In Progress -> Resolved -> Closed`.
-- **Filtering** - filter the ticket list by status.
+- **Search, sort & pagination** - server-side search across title/description, multiple
+  sort orders (newest, oldest, recently updated, priority, title) and paged results.
+- **Agent assignment** - agents can claim or reassign tickets to any agent.
+- **Activity log** - every ticket records an immutable timeline (created, assigned,
+  reassigned, unassigned, status changed).
+- **Analytics dashboard** - agents get counts by status/priority/category, a resolution
+  rate and a 7-day creation trend.
+- **Security hardening** - Helmet security headers, per-route rate limiting and
+  server-side request validation.
+- **API docs** - interactive Swagger UI at `/api-docs`.
+- **Automated tests** - API integration tests with the Node test runner.
 - **Seed data** - one command creates demo accounts and sample tickets.
 
 ---
@@ -39,27 +49,36 @@ Built as a Full Stack Developer assessment for NT Tech Innovation.
 support-ticket-system/
 ├── backend/
 │   ├── config/
-│   │   └── db.js                 # Mongoose connection
+│   │   ├── db.js                 # Mongoose connection
+│   │   └── swagger.js            # OpenAPI spec + Swagger UI
 │   ├── controllers/
 │   │   ├── authController.js     # register / login
-│   │   ├── ticketController.js   # ticket CRUD + status workflow
-│   │   └── commentController.js  # add / list comments
+│   │   ├── ticketController.js   # ticket CRUD, search, stats, workflow
+│   │   ├── commentController.js  # add / list comments
+│   │   └── userController.js     # agent directory
 │   ├── middleware/
 │   │   ├── authMiddleware.js     # verifies JWT, sets req.user
-│   │   └── roleMiddleware.js     # requireRole("agent") guards
+│   │   ├── roleMiddleware.js     # requireRole("agent") guards
+│   │   ├── rateLimiters.js       # general + auth rate limits
+│   │   └── validators.js         # express-validator rules
 │   ├── models/
 │   │   ├── User.js
 │   │   ├── Ticket.js
-│   │   └── Comment.js
+│   │   ├── Comment.js
+│   │   └── Activity.js
 │   ├── routes/
 │   │   ├── authRoutes.js
 │   │   ├── ticketRoutes.js
-│   │   └── commentRoutes.js
+│   │   ├── commentRoutes.js
+│   │   └── userRoutes.js
+│   ├── tests/                    # node:test + supertest API tests
 │   ├── utils/
-│   │   └── aiService.js          # Gemini classification + fallback
+│   │   ├── aiService.js          # Gemini classification + fallback
+│   │   └── activity.js           # activity log helper
 │   ├── .env.example
+│   ├── app.js                    # express app (middleware + routes)
 │   ├── seed.js                   # demo accounts + sample tickets
-│   ├── server.js
+│   ├── server.js                 # connects DB and starts the server
 │   └── package.json
 │
 ├── frontend/
@@ -167,7 +186,8 @@ Agent Account
 
 ## API Reference
 
-All ticket and comment routes require an `Authorization: Bearer <token>` header.
+All ticket, comment and user routes require an `Authorization: Bearer <token>` header.
+An interactive version of this reference is served at **`/api-docs`** (Swagger UI).
 
 ### Auth
 
@@ -179,13 +199,32 @@ All ticket and comment routes require an `Authorization: Bearer <token>` header.
 
 ### Tickets
 
-| Method | Endpoint                  | Description                      | Access          |
-| ------ | ------------------------- | -------------------------------- | --------------- |
-| POST   | `/api/tickets`            | Create a ticket (+ AI analysis)  | Customer        |
-| GET    | `/api/tickets`            | List tickets (own or all)        | Customer/Agent  |
-| GET    | `/api/tickets?status=Open`| List tickets filtered by status  | Customer/Agent  |
-| GET    | `/api/tickets/:id`        | Get a single ticket              | Owner/Agent     |
-| PATCH  | `/api/tickets/:id/status` | Update ticket status             | Agent only      |
+| Method | Endpoint                     | Description                          | Access         |
+| ------ | ---------------------------- | ------------------------------------ | -------------- |
+| POST   | `/api/tickets`               | Create a ticket (+ AI analysis)      | Customer       |
+| GET    | `/api/tickets`               | List tickets (own or all)            | Customer/Agent |
+| GET    | `/api/tickets/stats`         | Aggregated ticket statistics         | Customer/Agent |
+| GET    | `/api/tickets/:id`           | Get a single ticket                  | Owner/Agent    |
+| PATCH  | `/api/tickets/:id/status`    | Update ticket status                 | Agent only     |
+| PATCH  | `/api/tickets/:id/assign`    | Assign / unassign an agent           | Agent only     |
+| GET    | `/api/tickets/:id/activity`  | Activity timeline for a ticket       | Owner/Agent    |
+
+`GET /api/tickets` accepts query parameters:
+
+| Param      | Values                                                     | Default  |
+| ---------- | ---------------------------------------------------------- | -------- |
+| `q`        | search text matched against title/description              | -        |
+| `status`   | `Open`, `In Progress`, `Resolved`, `Closed`                | all      |
+| `priority` | `Low`, `Medium`, `High`, `Urgent`                          | all      |
+| `category` | category name                                              | all      |
+| `sort`     | `newest`, `oldest`, `updated`, `priority`, `title`         | `newest` |
+| `page`     | page number                                                | `1`      |
+| `limit`    | page size (max 100)                                        | `10`     |
+
+The response is paginated: `{ items, total, page, limit, pages }`.
+
+For `PATCH /api/tickets/:id/assign`, send `{ "assignedTo": "<agentId>" }`, send
+`{ "assignedTo": null }` to unassign, or omit the body to assign the ticket to yourself.
 
 ### Comments
 
@@ -193,6 +232,47 @@ All ticket and comment routes require an `Authorization: Bearer <token>` header.
 | ------ | ---------------------------- | ----------------- | -------------- |
 | POST   | `/api/tickets/:id/comments`  | Add a comment     | Owner/Agent    |
 | GET    | `/api/tickets/:id/comments`  | List comments     | Owner/Agent    |
+
+### Users
+
+| Method | Endpoint            | Description          | Access     |
+| ------ | ------------------- | -------------------- | ---------- |
+| GET    | `/api/users/agents` | List all agents      | Agent only |
+
+### Misc
+
+| Method | Endpoint        | Description            | Access |
+| ------ | --------------- | ---------------------- | ------ |
+| GET    | `/api/health`   | Health check           | Public |
+| GET    | `/api-docs`     | Swagger UI             | Public |
+
+---
+
+## Security
+
+- **Helmet** sets secure HTTP headers on every response.
+- **Rate limiting** - a general limiter on `/api` and a stricter limiter on `/api/auth`
+  (disabled automatically when `NODE_ENV=test`).
+- **Validation** - every write endpoint is validated with `express-validator`, returning
+  structured `400` errors before reaching the controller.
+- **Auth** - JWTs signed with `JWT_SECRET`; passwords hashed with bcrypt and never returned.
+- **Secrets** - `.env` is gitignored; `.env.example` documents the required variables.
+
+---
+
+## Testing
+
+The backend ships with integration tests powered by the built-in Node test runner,
+`supertest` and an in-memory MongoDB (no external database or Gemini key required).
+
+```bash
+cd backend
+npm test
+```
+
+Coverage includes authentication and validation, ticket creation and AI fallback,
+role-based access, status transitions, assignment, the activity log, pagination/search,
+tenant isolation and the stats endpoint.
 
 ---
 
@@ -260,6 +340,16 @@ in `category`/`priority` and also recorded in `aiSuggestedCategory`/`aiSuggested
 | message    | String   | required          |
 | timestamps | Date     | `createdAt`       |
 
+**Activity**
+
+| Field      | Type     | Notes                                                        |
+| ---------- | -------- | ------------------------------------------------------------ |
+| ticket     | ObjectId | ref `Ticket`                                                 |
+| actor      | ObjectId | ref `User` who performed the action                          |
+| action     | String   | `created`, `assigned`, `reassigned`, `unassigned`, `status_changed` |
+| meta       | Mixed    | action-specific details (e.g. status from/to, assignee)      |
+| timestamps | Date     | `createdAt`                                                  |
+
 ---
 
 ## Status Workflow
@@ -279,7 +369,6 @@ Open  ->  In Progress  ->  Resolved  ->  Closed
 
 - Agents are provisioned via the seed script; there is no public agent signup.
 - No file attachments, notifications, or real-time updates.
-- No pagination on the ticket list.
 - Ticket `category` and `priority` are not editable by agents (AI suggestion only).
 - Free-tier Gemini quota can be exhausted, in which case the fallback values are used.
 
