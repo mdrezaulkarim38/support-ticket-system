@@ -168,7 +168,11 @@ export const getStats = async (req, res) => {
   try {
     const match = req.user.role === "agent" ? {} : { createdBy: req.user._id };
 
-    const [statusAgg, priorityAgg] = await Promise.all([
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - 6);
+
+    const [statusAgg, priorityAgg, categoryAgg, trendAgg] = await Promise.all([
       Ticket.aggregate([
         { $match: match },
         { $group: { _id: "$status", count: { $sum: 1 } } },
@@ -176,6 +180,22 @@ export const getStats = async (req, res) => {
       Ticket.aggregate([
         { $match: match },
         { $group: { _id: "$priority", count: { $sum: 1 } } },
+      ]),
+      Ticket.aggregate([
+        { $match: match },
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      Ticket.aggregate([
+        { $match: { ...match, createdAt: { $gte: since } } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            count: { $sum: 1 },
+          },
+        },
       ]),
     ]);
 
@@ -191,7 +211,22 @@ export const getStats = async (req, res) => {
       byPriority[row._id] = row.count;
     });
 
-    res.json({ total, byStatus, byPriority });
+    const byCategory = categoryAgg.map((row) => ({
+      category: row._id || "General",
+      count: row.count,
+    }));
+
+    const trendMap = Object.fromEntries(
+      trendAgg.map((row) => [row._id, row.count])
+    );
+    const trend = Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(since);
+      day.setDate(since.getDate() + i);
+      const key = day.toISOString().slice(0, 10);
+      return { date: key, count: trendMap[key] || 0 };
+    });
+
+    res.json({ total, byStatus, byPriority, byCategory, trend });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
